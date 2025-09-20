@@ -188,28 +188,28 @@ export async function drawLogo(ctx, x, y, width, height) {
 /**
  * Draw quadrants of the screen and return information for drawing to Zoom
  * @param {CanvasRenderingContext2D} ctx - canvas 2d context
- * @param {Number} idx - index of the quadrant to draw (0-3)
- * @param {string} [text] - text to draw (only used if idx=3)
- * @param {string} [participantId] - participant to draw at the index (not used if idx=3)
+ * @param {Number} idx - index of the quadrant to draw (0-13)
+ * @param {string} [text] - text to draw
+ * @param {string} [participantId] - participant to draw at the index
  * @return {Promise<Object>} - data to draw to Zoom
  */
 export async function drawQuadrant({ idx, ctx, text, participantId }) {
-    if (idx < 0 || idx > 5) throw new Error('idx is outsize of range (0-5)');
+    // CAMBIO: Aumentado el rango máximo del índice
+    if (idx < 0 || idx > 13) throw new Error('idx is outsize of range (0-13)');
 
     const width = ctx.canvas.width;
     const height = ctx.canvas.height;
-
     const fill = ctx.fillStyle;
 
-    // Nueva lógica para una cuadrícula de 3x2
+    // CAMBIO: Nueva lógica para una cuadrícula de 7x2
     const quadrant = {
-        width: width / 3,
-        height: height / 2,
+        width: width / 7, // 7 columnas
+        height: height / 2, // 2 filas
     };
 
-    // Calcula la columna (0, 1, 2) y la fila (0, 1)
-    const col = idx % 3;
-    const row = Math.floor(idx / 3);
+    // CAMBIO: Calcula la columna (0-6) y la fila (0-1)
+    const col = idx % 7;
+    const row = Math.floor(idx / 7);
 
     let x = col * quadrant.width;
     let y = row * quadrant.height;
@@ -220,8 +220,8 @@ export async function drawQuadrant({ idx, ctx, text, participantId }) {
 
     let w, h;
     do {
-        w = qw * 0.9; // Un poco más de margen
-        h = (w * 9) / 16;
+        w = qw * 0.9;
+        h = (w * 9) / 16; // Mantiene la proporción 16:9
         --qw;
     } while (h + doublePadding > quadrant.height);
 
@@ -258,17 +258,18 @@ export async function drawQuadrant({ idx, ctx, text, participantId }) {
 }
 
 /**
- * Draw 4 quadrants filling the entire screen and rety
+ * Draw all quadrants filling the entire screen
  * @param {CanvasRenderingContext2D} ctx - canvas 2d context
  * @param {Array.<String>} participants - participants IDs to map to quadrants
  * @param {String} [fill] - fill Style to use
- * @param {String} text - text to draw for the last quadrant
+ * @param {String} text - text to draw
  * @return {Promise<*[Object]>} - data for drawing to Zoom
  */
 export async function draw({ ctx, participants, fill, text }) {
     const data = [];
 
-    for (let idx = 0; idx < 6; idx++) {
+    // CAMBIO: El bucle ahora crea 14 cuadrantes
+    for (let idx = 0; idx < 14; idx++) {
         const participantId = participants[idx];
 
         const d = await drawQuadrant({

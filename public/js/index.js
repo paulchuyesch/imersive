@@ -141,12 +141,12 @@ async function render() {
 
 /**
  * Redraw one of the displayed participants
- * @param {Number} idx - index of the participant (0-5)
+ * @param {Number} idx - index of the participant (0-13)
  * @param {String} p - participant ID
  * @return {Promise<void>}
  */
 async function drawCastMember(idx, p) {
-    if (!app.isImmersive || idx >= 6) return;
+    if (!app.isImmersive || idx >= 14) return;
 
     const { img, participant } = await drawQuadrant({
         ctx,
@@ -249,121 +249,6 @@ function showElements() {
     }
 }
 
-/* Zoom Event Handlers */
-
-app.sdk.onConnect(async () => {
-    if (app.isInClient) return;
-
-    await app.sdk.takeParticipantPhoto();
-    app.sdk.onPhoto(async (payload) => {
-        console.log(JSON.stringify(payload));
-    });
-
-    await app.sdk.postMessage({
-        participants: app.participants,
-        color: settings.color,
-        isHost: app.userIsHost,
-        uuid: settings.uuid,
-    });
-});
-
-app.sdk.onMeeting(({ action }) => {
-    if (action === 'ended') socket.disconnect();
-});
-
-app.sdk.onParticipantChange(async ({ participants }) => {
-    for (const part of participants) {
-        const p = {
-            participantId: part.participantId.toString(),
-            screenName: part.screenName,
-            role: part.role,
-        };
-
-        const i = app.participants.findIndex(
-            ({ participantId }) => participantId === p.participantId
-        );
-
-        if (part.status === 'leave' && i !== -1) {
-            app.participants.splice(i, 1);
-            const idx = settings.cast.indexOf(p.participantId);
-
-            if (idx === -1) return;
-
-            settings.cast.splice(idx, 1);
-
-            if (app.isImmersive) await app.clearParticipant(p.participantId);
-        } else app.participants.push(p);
-    }
-
-    await app.sdk.postMessage({ participants: app.participants });
-    setCastSelect(app.participants);
-});
-
-app.sdk.onMessage(async ({ payload }) => {
-    const {
-        color,
-        updateCast,
-        ended,
-        isHost,
-        participants,
-        uuid,
-    } = payload;
-
-    if (uuid) {
-        showEl(controls);
-        settings.uuid = uuid;
-    }
-
-    if (ended) {
-        hideEl(controls);
-        hideEl(hostControls);
-    }
-
-    if (isHost) {
-        showEl(hostControls);
-        setCastSelect(app.participants);
-    }
-
-    if (participants) {
-        helpMsg.classList.add(classes.hidden);
-        controls.classList.remove(classes.hidden);
-        setCastSelect(participants);
-    }
-
-    if (updateCast) {
-        settings.cast = updateCast.slice(0, 6);
-
-        if (app.isInMeeting) await start();
-        else if (app.isImmersive) {
-            const len = app.drawnImages.length;
-            if (len <= 0) await render();
-            else
-                for (let i = 0; i < len; i++) {
-                    const p = settings.cast[i];
-                    if (!p) continue;
-
-                    await drawCastMember(i, p);
-                }
-        }
-    }
-
-    if (color) {
-        const idx = Object.values(colors).indexOf(color);
-        const isCustom = idx === -1;
-
-        settings.color = color;
-
-        if (isCustom) {
-            custColorInp.value = color;
-            colorSel.setAttribute('disabled', '');
-        } else {
-            colorSel.removeAttribute('disabled');
-            colorSel.value = Object.keys(colors)[idx];
-        }
-
-        if (app.isImmersive) await render();
-    }
-});
 
 /* DOM Event Handlers */
 
@@ -409,8 +294,8 @@ setCastBtn.onclick = async () => {
     const hasUI = app.drawnImages.length > 0;
 
     const cast = [];
-
-    for (let i = 0; i < 6 && i < selected.length; i++) {
+    
+    for (let i = 0; i < 14 && i < selected.length; i++) {
         const id = selected[i].value;
 
         if (!id) continue;
@@ -441,12 +326,130 @@ window.onresize = debounce(render, 1000);
     try {
         await app.init();
 
+        /* Zoom Event Handlers */
+
+        app.sdk.onConnect(async () => {
+            if (app.isInClient) return;
+
+            await app.sdk.takeParticipantPhoto();
+            app.sdk.onPhoto(async (payload) => {
+                console.log(JSON.stringify(payload));
+            });
+
+            await app.sdk.postMessage({
+                participants: app.participants,
+                color: settings.color,
+                isHost: app.userIsHost,
+                uuid: settings.uuid,
+            });
+        });
+
+        app.sdk.onMeeting(({ action }) => {
+            if (action === 'ended') socket.disconnect();
+        });
+
+        app.sdk.onParticipantChange(async ({ participants }) => {
+            for (const part of participants) {
+                const p = {
+                    participantId: part.participantId.toString(),
+                    screenName: part.screenName,
+                    role: part.role,
+                };
+
+                const i = app.participants.findIndex(
+                    ({ participantId }) => participantId === p.participantId
+                );
+
+                if (part.status === 'leave' && i !== -1) {
+                    app.participants.splice(i, 1);
+                    const idx = settings.cast.indexOf(p.participantId);
+
+                    if (idx === -1) return;
+
+                    settings.cast.splice(idx, 1);
+
+                    if (app.isImmersive) await app.clearParticipant(p.participantId);
+                } else app.participants.push(p);
+            }
+
+            await app.sdk.postMessage({ participants: app.participants });
+            setCastSelect(app.participants);
+        });
+
+        app.sdk.onMessage(async ({ payload }) => {
+            const {
+                color,
+                updateCast,
+                ended,
+                isHost,
+                participants,
+                uuid,
+            } = payload;
+
+            if (uuid) {
+                showEl(controls);
+                settings.uuid = uuid;
+            }
+
+            if (ended) {
+                hideEl(controls);
+                hideEl(hostControls);
+            }
+
+            if (isHost) {
+                showEl(hostControls);
+                setCastSelect(app.participants);
+            }
+
+            if (participants) {
+                helpMsg.classList.add(classes.hidden);
+                controls.classList.remove(classes.hidden);
+                setCastSelect(participants);
+            }
+
+            if (updateCast) {
+                settings.cast = updateCast.slice(0, 14);
+
+                if (app.isInMeeting) await start();
+                else if (app.isImmersive) {
+                    const len = app.drawnImages.length;
+                    if (len <= 0) await render();
+                    else
+                        for (let i = 0; i < len; i++) {
+                            const p = settings.cast[i];
+                            if (!p) continue;
+
+                            await drawCastMember(i, p);
+                        }
+                }
+            }
+
+            if (color) {
+                const idx = Object.values(colors).indexOf(color);
+                const isCustom = idx === -1;
+
+                settings.color = color;
+
+                if (isCustom) {
+                    custColorInp.value = color;
+                    colorSel.setAttribute('disabled', '');
+                } else {
+                    colorSel.removeAttribute('disabled');
+                    colorSel.value = Object.keys(colors)[idx];
+                }
+
+                if (app.isImmersive) await render();
+            }
+        });
+
+
         if (!app.isInClient) {
             const { meetingUUID } = await app.sdk.getMeetingUUID();
             settings.uuid = meetingUUID;
 
             await app.sdk.connect();
 
+            // LÍNEA CORREGIDA
             if (!app.userIsHost) {
                 socket.on('update', onUpdate);
                 socket.emit('join', { meetingUUID: settings.uuid });
