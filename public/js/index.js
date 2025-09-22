@@ -105,26 +105,54 @@ async function start() {
 async function render() {
     if (!app.isImmersive) return;
 
-    const width = innerWidth * devicePixelRatio;
-    const height = innerHeight * devicePixelRatio;
+    // ##### NUEVA LÓGICA RESPONSIVA #####
+
+    const totalWidth = innerWidth * devicePixelRatio;
+    const totalHeight = innerHeight * devicePixelRatio;
 
     canvas.style.width = '100%';
     canvas.style.height = '100%';
+    canvas.width = totalWidth;
+    canvas.height = totalHeight;
 
-    canvas.width = width;
-    canvas.height = height;
+    // 1. Calcular las dimensiones del área segura 16:9
+    const targetAspectRatio = 16 / 9;
+    let safeWidth = totalWidth;
+    let safeHeight = totalHeight;
+    let safeX = 0;
+    let safeY = 0;
 
+    if ((totalWidth / totalHeight) > targetAspectRatio) {
+        // La ventana es más ancha que 16:9 (necesita barras a los lados)
+        safeWidth = totalHeight * targetAspectRatio;
+        safeX = (totalWidth - safeWidth) / 2;
+    } else {
+        // La ventana es más alta que 16:9 (necesita barras arriba y abajo)
+        safeHeight = totalWidth / targetAspectRatio;
+        safeY = (totalHeight - safeHeight) / 2;
+    }
+
+    // 2. Limpiar todo y dibujar las barras negras
+    ctx.clearRect(0, 0, totalWidth, totalHeight);
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, totalWidth, totalHeight);
+
+    // 3. Preparar el área segura para el dibujo
     ctx.fillStyle = settings.color;
+    ctx.fillRect(safeX, safeY, safeWidth, safeHeight);
 
     // we clear screen before drawing to avoid visual glitches on fast machines
     await app.clearAllParticipants();
     await app.clearAllImages();
 
-    // we draw to the page canvas so the user sees the change right away
+    // 4. Llamar a la función de dibujo, pasándole las dimensiones del área segura
     const data = await draw({
         ctx,
         participants: settings.cast,
+        safeArea: { x: safeX, y: safeY, width: safeWidth, height: safeHeight }
     });
+    
+    // #######################################
 
     // then we save our quadrants to Zoom at the correct zIndexes
     for (let i = 0; i < data.length; i++) {
@@ -141,18 +169,38 @@ async function render() {
 
 /**
  * Redraw one of the displayed participants
- * @param {Number} idx - index of the participant (0-23)
+ * @param {Number} idx - index of the participant (0-24)
  * @param {String} p - participant ID
  * @return {Promise<void>}
  */
 async function drawCastMember(idx, p) {
-    // CAMBIO: Límite aumentado a 24
-    if (!app.isImmersive || idx >= 24) return;
+    if (!app.isImmersive || idx >= 25) return;
+
+    // ##### AJUSTE FINAL AQUÍ #####
+    // Se añade el cálculo del área segura también a esta función.
+    const totalWidth = innerWidth * devicePixelRatio;
+    const totalHeight = innerHeight * devicePixelRatio;
+    const targetAspectRatio = 16 / 9;
+    let safeWidth = totalWidth;
+    let safeHeight = totalHeight;
+    let safeX = 0;
+    let safeY = 0;
+
+    if ((totalWidth / totalHeight) > targetAspectRatio) {
+        safeWidth = totalHeight * targetAspectRatio;
+        safeX = (totalWidth - safeWidth) / 2;
+    } else {
+        safeHeight = totalWidth / targetAspectRatio;
+        safeY = (totalHeight - safeHeight) / 2;
+    }
+    const safeArea = { x: safeX, y: safeY, width: safeWidth, height: safeHeight };
+    // ###########################
 
     const { img, participant } = await drawQuadrant({
         ctx,
         idx,
         participantId: p,
+        safeArea: safeArea // Se pasa el área segura a la función de dibujo
     });
 
     await app.drawImage(img);
@@ -296,8 +344,7 @@ setCastBtn.onclick = async () => {
 
     const cast = [];
     
-    // CAMBIO: El bucle ahora permite hasta 24 participantes
-    for (let i = 0; i < 24 && i < selected.length; i++) {
+    for (let i = 0; i < 25 && i < selected.length; i++) {
         const id = selected[i].value;
 
         if (!id) continue;
@@ -410,8 +457,7 @@ window.onresize = debounce(render, 1000);
             }
 
             if (updateCast) {
-                // CAMBIO: Se aceptan hasta 24 participantes
-                settings.cast = updateCast.slice(0, 24);
+                settings.cast = updateCast.slice(0, 25);
 
                 if (app.isInMeeting) await start();
                 else if (app.isImmersive) {

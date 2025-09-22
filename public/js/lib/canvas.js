@@ -56,66 +56,79 @@ export function clipRoundRect(ctx, x, y, width, height, radius) {
 }
 
 /**
- * Dibuja un único cuadro de participante según el diseño perimetral.
+ * Dibuja un único cuadro de participante.
  * @param {CanvasRenderingContext2D} ctx - contexto del canvas
- * @param {Number} idx - índice del participante (0-23), que corresponde a los números de la imagen.
+ * @param {Number} idx - índice del participante (0-24).
  * @param {string} participantId - ID del participante
+ * @param {object} safeArea - El área segura 16:9 para dibujar
  * @return {Promise<Object>} - datos para dibujar en Zoom
  */
-export async function drawQuadrant({ idx, ctx, participantId }) {
-    const canvasWidth = ctx.canvas.width;
-    const canvasHeight = ctx.canvas.height;
-    const fill = ctx.fillStyle;
-
-    // --- Lógica del Diseño Perimetral (Grid de 7x7) ---
+export async function drawQuadrant({ idx, ctx, participantId, safeArea }) {
+    const canvasWidth = safeArea.width;
+    const canvasHeight = safeArea.height;
+    
     const slotWidth = canvasWidth / 7;
     const slotHeight = canvasHeight / 7;
     
-    let row, col;
+    let x, y, w, h;
 
-    // Asignar fila y columna según el índice del participante (idx 0 es la posición 1)
-    if (idx >= 0 && idx <= 6) { 
-        // Fila Superior (posiciones 1-7)
-        row = 0;
-        col = idx;
-    } else if (idx >= 7 && idx <= 11) { 
-        // Columna Derecha (posiciones 8-12)
-        row = (idx - 7) + 1;
-        col = 6;
-    } else if (idx >= 12 && idx <= 18) { 
-        // Fila Inferior (posiciones 13-19)
-        row = 6;
-        col = 6 - (idx - 12);
-    } else if (idx >= 19 && idx <= 23) { 
-        // Columna Izquierda (posiciones 20-24)
-        row = 6 - (idx - 18);
-        col = 0;
+    if (idx === 0) {
+        // --- PARTICIPANTE 0: EL PRESENTADOR CENTRAL ---
+        x = slotWidth;
+        y = slotHeight;
+        w = slotWidth * 5;
+        h = slotHeight * 5;
+    } else {
+        // --- PARTICIPANTES 1-24: EL MARCO PERIMETRAL ---
+        const borderIndex = idx - 1;
+        let row, col;
+
+        if (borderIndex >= 0 && borderIndex <= 6) { // Fila Superior
+            row = 0;
+            col = borderIndex;
+        } else if (borderIndex >= 7 && borderIndex <= 11) { // Columna Derecha
+            row = (borderIndex - 7) + 1;
+            col = 6;
+        } else if (borderIndex >= 12 && borderIndex <= 18) { // Fila Inferior
+            row = 6;
+            col = 6 - (borderIndex - 12);
+        } else if (borderIndex >= 19 && borderIndex <= 23) { // Columna Izquierda
+            row = 6 - (borderIndex - 18);
+            col = 0;
+        }
+        
+        x = col * slotWidth;
+        y = row * slotHeight;
+        w = slotWidth;
+        h = slotHeight;
     }
+    
+    const finalX = x + safeArea.x;
+    const finalY = y + safeArea.y;
 
-    const x = col * slotWidth;
-    const y = row * slotHeight;
-    const w = slotWidth;
-    const h = slotHeight;
-
-    // --- Cálculos para el tamaño del video (manteniendo proporción y márgenes) ---
     let videoW = w * 0.9;
-    let videoH = (videoW * 9) / 16;
-    if (videoH > h * 0.9) {
-        videoH = h * 0.9;
-        videoW = (videoH * 16) / 9;
+    let videoH = h * 0.9; 
+    
+    if ((videoW / videoH) > (16/9)) {
+        videoW = videoH * (16/9);
+    } else {
+        videoH = videoW * (9/16);
     }
 
-    const radius = Math.min(videoW, videoH) * 0.2;
     const xPad = (w - videoW) / 2;
     const yPad = (h - videoH) / 2;
-    const videoX = x + xPad;
-    const videoY = y + yPad;
+    const videoX = finalX + xPad;
+    const videoY = finalY + yPad;
 
-    // Dibuja el fondo y recorta el espacio para el video
-    drawRect(ctx, x, y, w, h, fill);
-    clipRoundRect(ctx, videoX, videoY, videoW, videoH, radius);
+    drawRect(ctx, finalX, finalY, w, h, ctx.fillStyle);
+    
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = '#FFF';
+    ctx.fillRect(videoX, videoY, videoW, videoH);
+    ctx.restore();
 
-    const imageData = ctx.getImageData(x, y, w, h);
+    const imageData = ctx.getImageData(finalX, finalY, w, h);
 
     return {
         participant: {
@@ -125,11 +138,16 @@ export async function drawQuadrant({ idx, ctx, participantId }) {
             width: videoW,
             height: videoH,
             zIndex: idx,
+            isOriginalAspectRatio: true,
+            // ##### CAMBIO FINAL AQUÍ #####
+            // Esta línea desactiva el recorte de fondo de Zoom.
+            hasMask: false
+            // ###########################
         },
         img: {
             imageData,
-            x: `${Math.floor(x / devicePixelRatio)}px`,
-            y: `${Math.floor(y / devicePixelRatio)}px`,
+            x: `${Math.floor(finalX / devicePixelRatio)}px`,
+            y: `${Math.floor(finalY / devicePixelRatio)}px`,
             zIndex: idx + 1,
         },
     };
@@ -139,23 +157,23 @@ export async function drawQuadrant({ idx, ctx, participantId }) {
  * Dibuja todos los cuadrantes.
  * @param {CanvasRenderingContext2D} ctx - contexto del canvas
  * @param {Array.<String>} participants - IDs de los participantes
+ * @param {object} safeArea - El área segura 16:9 para dibujar
  * @return {Promise<*[Object]>} - datos para dibujar en Zoom
  */
-export async function draw({ ctx, participants }) {
+export async function draw({ ctx, participants, safeArea }) {
     const data = [];
 
-    // Bucle para 24 participantes
-    for (let idx = 0; idx < 24; idx++) {
+    // Bucle para 25 participantes
+    for (let idx = 0; idx < 25; idx++) {
         const participantId = participants[idx];
         
-        if (participantId) {
-            const d = await drawQuadrant({
-                ctx,
-                idx,
-                participantId,
-            });
-            if (d) data.push(d);
-        }
+        const d = await drawQuadrant({
+            ctx,
+            idx,
+            participantId,
+            safeArea
+        });
+        if (d) data.push(d);
     }
 
     return data;

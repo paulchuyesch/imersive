@@ -36,9 +36,8 @@ class ImmersiveApp {
             if (!this.sdk)
                 throw new Error('Zoom App JS SDK is not loaded on the page');
 
-            this.sdk.onMyMediaChange(async ({ media: video }) => {
-                this.video = video;
-            });
+            // CÓDIGO PROBLEMÁTICO ELIMINADO DE AQUÍ
+            // this.sdk.onMyMediaChange(...);
 
             ImmersiveApp.#instance = this;
         }
@@ -124,6 +123,12 @@ class ImmersiveApp {
             ],
         });
         console.debug('Configuration', conf);
+
+        // CÓDIGO MOVIDO AQUÍ, DESPUÉS DE LA CONFIGURACIÓN
+        this.sdk.onMyMediaChange(async ({ media: video }) => {
+            this.video = video;
+        });
+
 
         if (conf.media?.video) this.video = conf.media.video;
 
