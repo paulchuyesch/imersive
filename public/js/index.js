@@ -105,8 +105,6 @@ async function start() {
 async function render() {
     if (!app.isImmersive) return;
 
-    // ##### NUEVA LÓGICA RESPONSIVA #####
-
     const totalWidth = innerWidth * devicePixelRatio;
     const totalHeight = innerHeight * devicePixelRatio;
 
@@ -115,7 +113,6 @@ async function render() {
     canvas.width = totalWidth;
     canvas.height = totalHeight;
 
-    // 1. Calcular las dimensiones del área segura 16:9
     const targetAspectRatio = 16 / 9;
     let safeWidth = totalWidth;
     let safeHeight = totalHeight;
@@ -123,38 +120,32 @@ async function render() {
     let safeY = 0;
 
     if ((totalWidth / totalHeight) > targetAspectRatio) {
-        // La ventana es más ancha que 16:9 (necesita barras a los lados)
         safeWidth = totalHeight * targetAspectRatio;
         safeX = (totalWidth - safeWidth) / 2;
     } else {
-        // La ventana es más alta que 16:9 (necesita barras arriba y abajo)
         safeHeight = totalWidth / targetAspectRatio;
         safeY = (totalHeight - safeHeight) / 2;
     }
 
-    // 2. Limpiar todo y dibujar las barras negras
     ctx.clearRect(0, 0, totalWidth, totalHeight);
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, totalWidth, totalHeight);
 
-    // 3. Preparar el área segura para el dibujo
     ctx.fillStyle = settings.color;
     ctx.fillRect(safeX, safeY, safeWidth, safeHeight);
 
-    // we clear screen before drawing to avoid visual glitches on fast machines
     await app.clearAllParticipants();
     await app.clearAllImages();
 
-    // 4. Llamar a la función de dibujo, pasándole las dimensiones del área segura
+    // MEJORA: Copiar el array de participantes para evitar errores si cambia durante el renderizado
+    const participantsSnapshot = [...settings.cast];
+
     const data = await draw({
         ctx,
-        participants: settings.cast,
+        participants: participantsSnapshot, // Usar la copia
         safeArea: { x: safeX, y: safeY, width: safeWidth, height: safeHeight }
     });
     
-    // #######################################
-
-    // then we save our quadrants to Zoom at the correct zIndexes
     for (let i = 0; i < data.length; i++) {
         const { participant, img } = data[i];
         const id = participant?.participantId;
@@ -163,7 +154,6 @@ async function render() {
         if (id) await app.drawParticipant(participant);
     }
 
-    // Clear the page canvas that we drew over with Zoom
     clearCanvas();
 }
 
@@ -176,8 +166,6 @@ async function render() {
 async function drawCastMember(idx, p) {
     if (!app.isImmersive || idx >= 25) return;
 
-    // ##### AJUSTE FINAL AQUÍ #####
-    // Se añade el cálculo del área segura también a esta función.
     const totalWidth = innerWidth * devicePixelRatio;
     const totalHeight = innerHeight * devicePixelRatio;
     const targetAspectRatio = 16 / 9;
@@ -194,13 +182,12 @@ async function drawCastMember(idx, p) {
         safeY = (totalHeight - safeHeight) / 2;
     }
     const safeArea = { x: safeX, y: safeY, width: safeWidth, height: safeHeight };
-    // ###########################
 
     const { img, participant } = await drawQuadrant({
         ctx,
         idx,
         participantId: p,
-        safeArea: safeArea // Se pasa el área segura a la función de dibujo
+        safeArea: safeArea
     });
 
     await app.drawImage(img);

@@ -61,96 +61,105 @@ export function clipRoundRect(ctx, x, y, width, height, radius) {
  * @param {Number} idx - índice del participante (0-24).
  * @param {string} participantId - ID del participante
  * @param {object} safeArea - El área segura 16:9 para dibujar
- * @return {Promise<Object>} - datos para dibujar en Zoom
+ * @return {Promise<Object|null>} - datos para dibujar en Zoom o null si hay error
  */
 export async function drawQuadrant({ idx, ctx, participantId, safeArea }) {
-    const canvasWidth = safeArea.width;
-    const canvasHeight = safeArea.height;
-    
-    const slotWidth = canvasWidth / 7;
-    const slotHeight = canvasHeight / 7;
-    
-    let x, y, w, h;
+    // MEJORA: Validación de entrada
+    if (participantId && typeof participantId !== 'string') {
+        console.warn(`ID de participante inválido en el índice ${idx}:`, participantId);
+        return null; // No dibujar si el ID es inválido
+    }
 
-    if (idx === 0) {
-        // --- PARTICIPANTE 0: EL PRESENTADOR CENTRAL ---
-        x = slotWidth;
-        y = slotHeight;
-        w = slotWidth * 5;
-        h = slotHeight * 5;
-    } else {
-        // --- PARTICIPANTES 1-24: EL MARCO PERIMETRAL ---
-        const borderIndex = idx - 1;
-        let row, col;
+    try {
+        const canvasWidth = safeArea.width;
+        const canvasHeight = safeArea.height;
+        
+        const slotWidth = canvasWidth / 7;
+        const slotHeight = canvasHeight / 7;
+        
+        let x, y, w, h;
 
-        if (borderIndex >= 0 && borderIndex <= 6) { // Fila Superior
-            row = 0;
-            col = borderIndex;
-        } else if (borderIndex >= 7 && borderIndex <= 11) { // Columna Derecha
-            row = (borderIndex - 7) + 1;
-            col = 6;
-        } else if (borderIndex >= 12 && borderIndex <= 18) { // Fila Inferior
-            row = 6;
-            col = 6 - (borderIndex - 12);
-        } else if (borderIndex >= 19 && borderIndex <= 23) { // Columna Izquierda
-            row = 6 - (borderIndex - 18);
-            col = 0;
+        if (idx === 0) {
+            // --- PARTICIPANTE 0: EL PRESENTADOR CENTRAL ---
+            x = slotWidth;
+            y = slotHeight;
+            w = slotWidth * 5;
+            h = slotHeight * 5;
+        } else {
+            // --- PARTICIPANTES 1-24: EL MARCO PERIMETRAL ---
+            const borderIndex = idx - 1;
+            let row, col;
+
+            if (borderIndex >= 0 && borderIndex <= 6) { // Fila Superior
+                row = 0;
+                col = borderIndex;
+            } else if (borderIndex >= 7 && borderIndex <= 11) { // Columna Derecha
+                row = (borderIndex - 7) + 1;
+                col = 6;
+            } else if (borderIndex >= 12 && borderIndex <= 18) { // Fila Inferior
+                row = 6;
+                col = 6 - (borderIndex - 12);
+            } else if (borderIndex >= 19 && borderIndex <= 23) { // Columna Izquierda
+                row = 6 - (borderIndex - 18);
+                col = 0;
+            }
+            
+            x = col * slotWidth;
+            y = row * slotHeight;
+            w = slotWidth;
+            h = slotHeight;
         }
         
-        x = col * slotWidth;
-        y = row * slotHeight;
-        w = slotWidth;
-        h = slotHeight;
+        const finalX = x + safeArea.x;
+        const finalY = y + safeArea.y;
+
+        let videoW = w * 0.9;
+        let videoH = h * 0.9; 
+        
+        if ((videoW / videoH) > (16/9)) {
+            videoW = videoH * (16/9);
+        } else {
+            videoH = videoW * (9/16);
+        }
+
+        const xPad = (w - videoW) / 2;
+        const yPad = (h - videoH) / 2;
+        const videoX = finalX + xPad;
+        const videoY = finalY + yPad;
+
+        drawRect(ctx, finalX, finalY, w, h, ctx.fillStyle);
+        
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.fillStyle = '#FFF';
+        ctx.fillRect(videoX, videoY, videoW, videoH);
+        ctx.restore();
+
+        const imageData = ctx.getImageData(finalX, finalY, w, h);
+
+        return {
+            participant: {
+                participantId: participantId,
+                x: `${Math.floor(videoX / devicePixelRatio)}px`,
+                y: `${Math.floor(videoY / devicePixelRatio)}px`,
+                width: videoW,
+                height: videoH,
+                zIndex: idx,
+                isOriginalAspectRatio: true,
+                hasMask: false
+            },
+            img: {
+                imageData,
+                x: `${Math.floor(finalX / devicePixelRatio)}px`,
+                y: `${Math.floor(finalY / devicePixelRatio)}px`,
+                zIndex: idx + 1,
+            },
+        };
+    } catch (error) {
+        // MEJORA: Manejo de errores para operaciones de Canvas
+        console.error(`Error dibujando el cuadrante ${idx}:`, error);
+        return null; // Devuelve null para evitar que la app se bloquee
     }
-    
-    const finalX = x + safeArea.x;
-    const finalY = y + safeArea.y;
-
-    let videoW = w * 0.9;
-    let videoH = h * 0.9; 
-    
-    if ((videoW / videoH) > (16/9)) {
-        videoW = videoH * (16/9);
-    } else {
-        videoH = videoW * (9/16);
-    }
-
-    const xPad = (w - videoW) / 2;
-    const yPad = (h - videoH) / 2;
-    const videoX = finalX + xPad;
-    const videoY = finalY + yPad;
-
-    drawRect(ctx, finalX, finalY, w, h, ctx.fillStyle);
-    
-    ctx.save();
-    ctx.globalCompositeOperation = 'destination-out';
-    ctx.fillStyle = '#FFF';
-    ctx.fillRect(videoX, videoY, videoW, videoH);
-    ctx.restore();
-
-    const imageData = ctx.getImageData(finalX, finalY, w, h);
-
-    return {
-        participant: {
-            participantId: participantId,
-            x: `${Math.floor(videoX / devicePixelRatio)}px`,
-            y: `${Math.floor(videoY / devicePixelRatio)}px`,
-            width: videoW,
-            height: videoH,
-            zIndex: idx,
-            isOriginalAspectRatio: true,
-            // ##### CAMBIO FINAL AQUÍ #####
-            // Esta línea desactiva el recorte de fondo de Zoom.
-            hasMask: false
-            // ###########################
-        },
-        img: {
-            imageData,
-            x: `${Math.floor(finalX / devicePixelRatio)}px`,
-            y: `${Math.floor(finalY / devicePixelRatio)}px`,
-            zIndex: idx + 1,
-        },
-    };
 }
 
 /**
