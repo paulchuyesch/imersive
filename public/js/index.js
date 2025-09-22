@@ -148,8 +148,15 @@ async function render() {
         const { participant, img } = data[i];
         const id = participant?.participantId;
 
-        await app.drawImage(img);
-        if (id) await app.drawParticipant(participant);
+        // Solo dibujamos la imagen si existe (no para el presentador central)
+        if (img) {
+            await app.drawImage(img);
+        }
+        
+        // Siempre dibujamos el participante si tiene ID
+        if (id) {
+            await app.drawParticipant(participant);            
+        }
     }
 
     clearCanvas();

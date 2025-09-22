@@ -37,7 +37,6 @@ class ImmersiveApp {
                 throw new Error('Zoom App JS SDK is not loaded on the page');
 
             // CÓDIGO PROBLEMÁTICO ELIMINADO DE AQUÍ
-            // this.sdk.onMyMediaChange(...);
 
             ImmersiveApp.#instance = this;
         }
@@ -129,7 +128,6 @@ class ImmersiveApp {
             this.video = video;
         });
 
-
         if (conf.media?.video) this.video = conf.media.video;
 
         this.#context = conf.runningContext;
@@ -197,6 +195,8 @@ class ImmersiveApp {
 
         return this.sdk.clearImage({ imageId });
     }
+
+
 
     async clearAllImages() {
         while (this.#drawn.images.length > 0) {

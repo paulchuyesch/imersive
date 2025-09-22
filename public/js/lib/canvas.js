@@ -64,10 +64,10 @@ export function clipRoundRect(ctx, x, y, width, height, radius) {
  * @return {Promise<Object|null>} - datos para dibujar en Zoom o null si hay error
  */
 export async function drawQuadrant({ idx, ctx, participantId, safeArea }) {
-    // MEJORA: Validación de entrada
+    // Validación de entrada
     if (participantId && typeof participantId !== 'string') {
         console.warn(`ID de participante inválido en el índice ${idx}:`, participantId);
-        return null; // No dibujar si el ID es inválido
+        return null;
     }
 
     try {
@@ -127,38 +127,67 @@ export async function drawQuadrant({ idx, ctx, participantId, safeArea }) {
         const videoX = finalX + xPad;
         const videoY = finalY + yPad;
 
-        drawRect(ctx, finalX, finalY, w, h, ctx.fillStyle);
-        
-        ctx.save();
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.fillStyle = '#FFF';
-        ctx.fillRect(videoX, videoY, videoW, videoH);
-        ctx.restore();
-
-        const imageData = ctx.getImageData(finalX, finalY, w, h);
-
-        return {
-            participant: {
-                participantId: participantId,
-                x: `${Math.floor(videoX / devicePixelRatio)}px`,
-                y: `${Math.floor(videoY / devicePixelRatio)}px`,
-                width: videoW,
-                height: videoH,
-                zIndex: idx,
-                isOriginalAspectRatio: true,
-                hasMask: false
-            },
-            img: {
-                imageData,
-                x: `${Math.floor(finalX / devicePixelRatio)}px`,
-                y: `${Math.floor(finalY / devicePixelRatio)}px`,
-                zIndex: idx + 1,
-            },
-        };
+        // Para el presentador central (idx === 0), NO dibujamos NADA
+        // Simplemente devolvemos las coordenadas para el video sin dibujar marco
+        if (idx === 0) {
+            // Creamos un canvas temporal transparente para la imagen
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = w;
+            tempCanvas.height = h;
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            // El canvas temporal queda completamente transparente
+            // No dibujamos nada en él
+            
+            const imageData = tempCtx.getImageData(0, 0, w, h);
+            
+            return {
+                participant: {
+                    participantId: participantId,
+                    x: `${Math.floor(videoX / devicePixelRatio)}px`,
+                    y: `${Math.floor(videoY / devicePixelRatio)}px`,
+                    width: videoW,
+                    height: videoH,
+                    zIndex: 1000, // Alto z-index para el presentador
+                    isOriginalAspectRatio: true,
+                    hasMask: false
+                },
+                img: null, // No enviamos imagen para el presentador central
+            };
+        } else {
+            // Para los participantes del borde, mantenemos el comportamiento original
+            drawRect(ctx, finalX, finalY, w, h, ctx.fillStyle);
+            
+            ctx.save();
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.fillStyle = '#FFF';
+            ctx.fillRect(videoX, videoY, videoW, videoH);
+            ctx.restore();
+            
+            const imageData = ctx.getImageData(finalX, finalY, w, h);
+            
+            return {
+                participant: {
+                    participantId: participantId,
+                    x: `${Math.floor(videoX / devicePixelRatio)}px`,
+                    y: `${Math.floor(videoY / devicePixelRatio)}px`,
+                    width: videoW,
+                    height: videoH,
+                    zIndex: idx + 100,
+                    isOriginalAspectRatio: true,
+                    hasMask: false
+                },
+                img: {
+                    imageData,
+                    x: `${Math.floor(finalX / devicePixelRatio)}px`,
+                    y: `${Math.floor(finalY / devicePixelRatio)}px`,
+                    zIndex: idx + 1,
+                },
+            };
+        }
     } catch (error) {
-        // MEJORA: Manejo de errores para operaciones de Canvas
         console.error(`Error dibujando el cuadrante ${idx}:`, error);
-        return null; // Devuelve null para evitar que la app se bloquee
+        return null;
     }
 }
 
@@ -182,7 +211,19 @@ export async function draw({ ctx, participants, safeArea }) {
             participantId,
             safeArea
         });
-        if (d) data.push(d);
+        
+        // Solo agregamos los datos si existen y si hay imagen (no para el presentador central)
+        if (d) {
+            if (d.img !== null) {
+                data.push(d);
+            } else if (d.participant && idx === 0) {
+                // Para el presentador central, solo agregamos el participante sin imagen
+                data.push({
+                    participant: d.participant,
+                    img: null
+                });
+            }
+        }
     }
 
     return data;
