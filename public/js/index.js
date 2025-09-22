@@ -141,12 +141,13 @@ async function render() {
 
 /**
  * Redraw one of the displayed participants
- * @param {Number} idx - index of the participant (0-13)
+ * @param {Number} idx - index of the participant (0-23)
  * @param {String} p - participant ID
  * @return {Promise<void>}
  */
 async function drawCastMember(idx, p) {
-    if (!app.isImmersive || idx >= 14) return;
+    // CAMBIO: Límite aumentado a 24
+    if (!app.isImmersive || idx >= 24) return;
 
     const { img, participant } = await drawQuadrant({
         ctx,
@@ -295,7 +296,8 @@ setCastBtn.onclick = async () => {
 
     const cast = [];
     
-    for (let i = 0; i < 14 && i < selected.length; i++) {
+    // CAMBIO: El bucle ahora permite hasta 24 participantes
+    for (let i = 0; i < 24 && i < selected.length; i++) {
         const id = selected[i].value;
 
         if (!id) continue;
@@ -408,7 +410,8 @@ window.onresize = debounce(render, 1000);
             }
 
             if (updateCast) {
-                settings.cast = updateCast.slice(0, 14);
+                // CAMBIO: Se aceptan hasta 24 participantes
+                settings.cast = updateCast.slice(0, 24);
 
                 if (app.isInMeeting) await start();
                 else if (app.isImmersive) {
@@ -449,7 +452,6 @@ window.onresize = debounce(render, 1000);
 
             await app.sdk.connect();
 
-            // LÍNEA CORREGIDA
             if (!app.userIsHost) {
                 socket.on('update', onUpdate);
                 socket.emit('join', { meetingUUID: settings.uuid });
