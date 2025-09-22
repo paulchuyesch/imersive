@@ -55,7 +55,6 @@ function showEl(el) {
  */
 function hideEl(el) {
     el.classList.add(classes.hidden);
-    el.classList.add(classes.hidden);
 }
 
 /**
@@ -137,12 +136,11 @@ async function render() {
     await app.clearAllParticipants();
     await app.clearAllImages();
 
-    // MEJORA: Copiar el array de participantes para evitar errores si cambia durante el renderizado
     const participantsSnapshot = [...settings.cast];
 
     const data = await draw({
         ctx,
-        participants: participantsSnapshot, // Usar la copia
+        participants: participantsSnapshot,
         safeArea: { x: safeX, y: safeY, width: safeWidth, height: safeHeight }
     });
     
@@ -289,7 +287,7 @@ function showElements() {
 /* DOM Event Handlers */
 
 colorSel.onchange = async (e) => {
-    if (custColorInp.innerText.length > 0) return;
+    if (custColorInp.value.length > 0) return;
 
     const color = colors[e.target.value];
     if (!color) return;
