@@ -1,89 +1,84 @@
-# Zoom App Custom Layout Sample
+# Ejemplo de Diseño Personalizado para una Aplicación de Zoom
 
-This Zoom App sample uses Node.js + Express to demonstrate how you can use the Zoom Layers API to create an Immersive
-Zoom App that captivates your audience and presenters alike with a custom layout.
+Este ejemplo de aplicación de Zoom utiliza Node.js + Express para demostrar cómo puede usar la API de Capas de Zoom para crear una aplicación de Zoom inmersiva que cautive a su audiencia y presentadores por igual con un diseño personalizado.
 
-## Prerequisites
+## Prerrequisitos
 
 1. [Node JS](https://nodejs.org/en/)
 2. [Ngrok](https://ngrok.com/docs/getting-started)
-3. [Zoom Account](https://support.zoom.us/hc/en-us/articles/207278726-Plan-Types-)
-4. [Zoom App Credentials](#config:-app-credentials) (Instructions below)
-    1. Client ID
-    2. Client Secret
-    3. Redirect URI
+3. [Cuenta de Zoom](https://support.zoom.us/hc/en-us/articles/207278726-Plan-Types-)
+4. [Credenciales de la Aplicación de Zoom](#config:-credenciales-de-la-aplicación) (Instrucciones a continuación)
+    1. ID de Cliente
+    2. Secreto del Cliente
+    3. URI de Redirección
 
-## Getting started
+## Empezando
 
-Open your terminal:
+Abra su terminal:
 
 ```bash
-# Clone down this repository
+# Clone este repositorio
 git clone git@github.com/zoom/zoomapps-customlayout-js
 
-# navigate into the cloned project directory
+# navegue al directorio del proyecto clonado
 cd zoomapps-customlayout-js
 
-# run NPM to install the app dependencies
+# ejecute NPM para instalar las dependencias de la aplicación
 npm install
 
-# initialize your ngrok session
+# inicialice su sesión de ngrok
 ngrok http 3000
 ```
 
-### Create your Zoom App
+### Cree su Aplicación de Zoom
 
-In your web browser, navigate to [Zoom Developer Portal](https://developers.zoom.us/) and register/log into your
-developer account.
+En su navegador web, navegue al [Portal de Desarrolladores de Zoom](https://developers.zoom.us/) y regístrese/inicie sesión en su cuenta de desarrollador.
 
-Click the "Build App" button at the top and choose to "Zoom Apps" application.
+Haga clic en el botón "Build App" en la parte superior y elija la aplicación "Zoom Apps".
 
-1. Name your app
-2. Choose whether to list your app on the marketplace or not
-3. Click "Create"
+1. Nombre su aplicación
+2. Elija si desea listar su aplicación en el marketplace o no
+3. Haga clic en "Create"
 
-For more information, you can follow [this guide](https://dev.to/zoom/introducing-zoom-apps-33he)
-check out [this video series](https://www.youtube.com/playlist?list=PLKpRxBfeD1kGN-0QgQ6XtSwtxI3GQM16R) on how to create and configure these sample Zoom Apps.
+Para obtener más información, puede seguir [esta guía](https://dev.to/zoom/introducing-zoom-apps-33he) o ver [esta serie de videos](https://www.youtube.com/playlist?list=PLKpRxBfeD1kGN-0QgQ6XtSwtxI3GQM16R) sobre cómo crear y configurar estas aplicaciones de Zoom de ejemplo.
 
-### Config: App Credentials
+### Config: Credenciales de la Aplicación
 
-In your terminal where you launched `ngrok`, find the `Forwarding` value and copy/paste that into the "Home URL" and "
-Redirect URL for OAuth" fields.
+En su terminal donde inició `ngrok`, busque el valor de `Forwarding` y cópielo/péguelo en los campos "Home URL" y "Redirect URL for OAuth".
 
 ```
 Home URL:               https://xxxxx.ngrok.io
 Redirect URL for OAuth: https://xxxxx.ngrok.io/auth
 ```
 
-> NOTE: ngrok URLs under ngrok's Free plan are ephemeral, meaning they will only live for up to a couple hours at most, and will change every time you reinitialize the application. This will require you to update these fields every time you restart your ngrok service.
+> NOTA: Las URL de ngrok en el plan gratuito de ngrok son efímeras, lo que significa que solo vivirán un par de horas como máximo y cambiarán cada vez que reinicie la aplicación. Esto requerirá que actualice estos campos cada vez que reinicie su servicio de ngrok.
 
-#### OAuth allow list
+#### Lista de permisos de OAuth
 
 - `https://example.ngrok.io`
 
-#### Domain allow list
+#### Lista de dominios permitidos
 
 - `appssdk.zoom.us`
 - `ngrok.io`
 
-### Config: Information
+### Config: Información
 
-The following information is required to activate your application:
+La siguiente información es necesaria para activar su aplicación:
 
-- Basic Information
-    - App name
-    - Short description
-    - Long description (entering a short message here is fine for now)
-- Developer Contact Information
-    - Name
-    - Email address
+- Información básica
+    - Nombre de la aplicación
+    - Descripción breve
+    - Descripción larga (está bien ingresar un mensaje corto aquí por ahora)
+- Información de contacto del desarrollador
+    - Nombre
+    - Dirección de correo electrónico
 
-> NOTE: if you intend to publish your application on the Zoom Apps Marketplace, more information will be required in this section before submitting.
+> NOTA: si tiene la intención de publicar su aplicación en el Marketplace de Aplicaciones de Zoom, se requerirá más información en esta sección antes de enviarla.
 
-### Config: App Features
+### Config: Características de la Aplicación
 
-Under the Zoom App SDK section, click the `+ Add APIs` button and enable the following options from their respective
-sections:
+En la sección del SDK de la Aplicación de Zoom, haga clic en el botón `+ Add APIs` y habilite las siguientes opciones de sus respectivas secciones:
 
 #### APIs
 
@@ -101,7 +96,7 @@ sections:
 - runRenderingContext
 - sendAppInvitationToAllParticipants
 
-#### Events
+#### Eventos
 
 - onConnect
 - onMeeting
@@ -109,59 +104,55 @@ sections:
 - onMyMediaChange
 - onParticipantChange
 
-### Scopes
+### Ámbitos
 
-Ensure that the following scope is selected on the Scopes tab:
+Asegúrese de que el siguiente ámbito esté seleccionado en la pestaña Ámbitos:
 - `zoomapp:inmeeting`
 
 ### Config `.env`
 
-When building for Development, open the `.env` file in your text editor and enter the following information from the App Credentials section you just
-configured:
+Al compilar para Desarrollo, abra el archivo `.env` en su editor de texto e ingrese la siguiente información de la sección Credenciales de la Aplicación que acaba de configurar:
 
 ```ini
-# Client ID for your Zoom App
+# ID de Cliente para su Aplicación de Zoom
 ZM_CLIENT_ID=[app_client_id]
 
-# Client Secret for your Zoom app
+# Secreto del Cliente para su aplicación de Zoom
 ZM_CLIENT_SECRET=[app_client_secret]
 
-# Redirect URI set for your app in the Zoom Marketplace
+# URI de Redirección configurado para su aplicación en el Marketplace de Zoom
 ZM_REDIRECT_URL=https://[xxxx-xx-xx-xxx-x].ngrok.io/auth
 ```
 
-#### Zoom for Government
+#### Zoom para Gobierno
 
-If you are a [Zoom for Government (ZfG)](https://www.zoomgov.com/) customer you can use the `ZM_HOST` variable to change
-the base URL used for Zoom. This will allow you to adjust to the different Marketplace and API Base URLs used by ZfG
-customers.
+Si es un cliente de [Zoom para Gobierno (ZfG)](https://www.zoomgov.com/), puede usar la variable `ZM_HOST` para cambiar la URL base utilizada para Zoom. Esto le permitirá ajustarse a las diferentes URL base de Marketplace y API utilizadas por los clientes de ZfG.
 
-**Marketplace URL:** marketplace.*zoomgov.com*
+**URL del Marketplace:** marketplace.*zoomgov.com*
 
-**API Base URL:** api.*zoomgov.com*
+**URL base de la API:** api.*zoomgov.com*
 
-## Start the App
+## Iniciar la Aplicación
 
-### Development
+### Desarrollo
 
-Run the `dev` npm script to start in development mode using a Docker container.
+Ejecute el script npm `dev` para iniciar en modo de desarrollo usando un contenedor de Docker.
 
 ```shell
 npm run dev
 ```
 
-The `dev` script will:
+El script `dev` hará lo siguiente:
 
-1. Watch JS files and built to the dist/ folder
-1. Watch Server files and build to the dist/ folder
-1. Start the application
+1. Observará los archivos JS y los compilará en la carpeta dist/
+2. Observará los archivos del Servidor y los compilará en la carpeta dist/
+3. Iniciará la aplicación
 
-### Production
+### Producción
 
-When running your application in production no logs are sent to the console by default and the server is not restarted
-on file changes.
+Cuando se ejecuta la aplicación en producción, no se envían registros a la consola de forma predeterminada y el servidor no se reinicia con los cambios en los archivos.
 
-We use the `NODE_ENV` environment variable here to tell the application to start in prodcution mode.
+Usamos la variable de entorno `NODE_ENV` aquí para decirle a la aplicación que se inicie en modo de producción.
 
 ```shell
 # Mac/Linux
@@ -171,39 +162,33 @@ NODE_ENV=production npm start
 set NODE_ENV=production && npm start
 ````
 
-## Usage
+## Uso
 
-To install the Zoom App, Navigate to the **Home URL** that you set in your browser and click the link to install.
+Para instalar la Aplicación de Zoom, navegue a la **Home URL** que configuró en su navegador y haga clic en el enlace para instalar.
 
-After you authorize the app, Zoom will automatically open the app within the client.
+Después de autorizar la aplicación, Zoom abrirá automáticamente la aplicación dentro del cliente.
 
-### Keeping secrets secret
+### Manteniendo los secretos en secreto
 
-This application makes use of your Zoom App Client ID and Client Secret as well as a custom secret for signing session
-cookies. During development, the application will read from the .env file. ;
+Esta aplicación utiliza el ID de Cliente y el Secreto del Cliente de su Aplicación de Zoom, así como un secreto personalizado para firmar las cookies de sesión. Durante el desarrollo, la aplicación leerá del archivo .env.
 
-In order to align with security best practices, this application does not read from the .env file in production mode.
+Para alinearse con las mejores prácticas de seguridad, esta aplicación no lee del archivo .env en modo de producción.
 
-This means you'll want to set environment variables on the hosting platform that you'
-re using instead of within the .env file. This might include using a secret manager or a CI/CD pipeline.
+Esto significa que querrá establecer variables de entorno en la plataforma de alojamiento que está utilizando en lugar de dentro del archivo .env. Esto podría incluir el uso de un administrador de secretos o una canalización de CI/CD.
 
-> :warning: **Never commit your .env file to version control:** The file likely contains Zoom App Credentials and Session Secrets
+> :warning: **Nunca confirme su archivo .env en el control de versiones:** Es probable que el archivo contenga las Credenciales de la Aplicación de Zoom y los Secretos de la Sesión.
 
-### Code Style
+### Estilo de Código
 
-This project uses [prettier](https://prettier.io/) and [eslint](https://eslint.org/) to enforce style and protect
-against coding errors along with a pre-commit git hook(s) via [husky](https://typicode.github.io/husky/#/) to ensure
-files pass checks prior to commit.
+Este proyecto utiliza [prettier](https://prettier.io/) y [eslint](https://eslint.org/) para hacer cumplir el estilo y proteger contra errores de codificación junto con un gancho de pre-confirmación de git a través de [husky](https://typicode.github.io/husky/#/) para garantizar que los archivos pasen las verificaciones antes de la confirmación.
 
-### Testing
+### Pruebas
 
-At this time there are no e2e or unit tests.
+En este momento no hay pruebas e2e o unitarias.
 
-## Need help?
+## ¿Necesita ayuda?
 
-If you're looking for help, try [Developer Support](https://devsupport.zoom.us) or
-our [Developer Forum](https://devforum.zoom.us). Priority support is also available
-with [Premier Developer Support](https://zoom.us/docs/en-us/developer-support-plans.html) plans.
+Si está buscando ayuda, pruebe el [Soporte para Desarrolladores](https://devsupport.zoom.us) o nuestro [Foro de Desarrolladores](https://devforum.zoom.us). El soporte prioritario también está disponible con los planes de [Soporte para Desarrolladores Premier](https://zoom.us/docs/en-us/developer-support-plans.html).
 
-### Documentation
-Make sure to review [our documentation](https://marketplace.zoom.us/docs/zoom-apps/introduction/) as a reference when building your Zoom Apps.
+### Documentación
+Asegúrese de revisar [nuestra documentación](https://marketplace.zoom.us/docs/zoom-apps/introduction/) como referencia al crear sus Aplicaciones de Zoom.
