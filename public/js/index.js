@@ -148,14 +148,20 @@ async function render() {
         const { participant, img } = data[i];
         const id = participant?.participantId;
 
-        // Solo dibujamos la imagen si existe (no para el presentador central)
         if (img) {
             await app.drawImage(img);
         }
         
-        // Siempre dibujamos el participante si tiene ID
         if (id) {
-            await app.drawParticipant(participant);            
+            await app.drawParticipant(participant);
+            // ##### CAMBIO FINAL AQUÍ #####
+            // Se llama a la API para remover el fondo virtual del participante.
+            try {
+                await app.sdk.removeVirtualBackground({ participantId: id });
+            } catch (e) {
+                console.error("Error al remover el fondo virtual:", e);
+            }
+            // ###########################
         }
     }
 
@@ -203,7 +209,15 @@ async function drawCastMember(idx, p) {
 
         if (drawn) await app.clearParticipant(drawn);
 
-        if (id) await app.drawParticipant(participant);
+        if (id) {
+            await app.drawParticipant(participant);
+             // Se añade también aquí por consistencia
+            try {
+                await app.sdk.removeVirtualBackground({ participantId: id });
+            } catch (e) {
+                console.error("Error al remover el fondo virtual:", e);
+            }
+        }
     }
 
     clearCanvas();
