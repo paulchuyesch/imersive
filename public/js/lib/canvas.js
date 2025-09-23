@@ -64,10 +64,9 @@ export function clipRoundRect(ctx, x, y, width, height, radius) {
  * @return {Promise<Object|null>} - datos para dibujar en Zoom o null si hay error
  */
 export async function drawQuadrant({ idx, ctx, participantId, safeArea }) {
-    // Validación de entrada
     if (participantId && typeof participantId !== 'string') {
         console.warn(`ID de participante inválido en el índice ${idx}:`, participantId);
-        return null;
+        return null; 
     }
 
     try {
@@ -113,78 +112,56 @@ export async function drawQuadrant({ idx, ctx, participantId, safeArea }) {
         const finalX = x + safeArea.x;
         const finalY = y + safeArea.y;
 
-        let videoW = w * 0.9;
-        let videoH = h * 0.9; 
+        const scaleFactor = (idx === 0) ? 1.0 : 0.9;
+        let videoW = w * scaleFactor;
+        let videoH = h * scaleFactor; 
         
-        if ((videoW / videoH) > (16/9)) {
-            videoW = videoH * (16/9);
-        } else {
-            videoH = videoW * (9/16);
+        // ##### AJUSTE FINAL AQUÍ #####
+        // Si NO es el presentador (idx !== 0), ajustamos la proporción para evitar recortes.
+        // Si SÍ es el presentador, dejamos que el video ocupe todo el espacio (w y h completos).
+        if (idx !== 0) {
+            if ((videoW / videoH) > (16/9)) {
+                videoW = videoH * (16/9);
+            } else {
+                videoH = videoW * (9/16);
+            }
         }
+        // ###########################
 
         const xPad = (w - videoW) / 2;
         const yPad = (h - videoH) / 2;
         const videoX = finalX + xPad;
         const videoY = finalY + yPad;
 
-        // Para el presentador central (idx === 0), NO dibujamos NADA
-        // Simplemente devolvemos las coordenadas para el video sin dibujar marco
-        if (idx === 0) {
-            // Creamos un canvas temporal transparente para la imagen
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = w;
-            tempCanvas.height = h;
-            const tempCtx = tempCanvas.getContext('2d');
-            
-            // El canvas temporal queda completamente transparente
-            // No dibujamos nada en él
-            
-            const imageData = tempCtx.getImageData(0, 0, w, h);
-            
-            return {
-                participant: {
-                    participantId: participantId,
-                    x: `${Math.floor(videoX / devicePixelRatio)}px`,
-                    y: `${Math.floor(videoY / devicePixelRatio)}px`,
-                    width: videoW,
-                    height: videoH,
-                    zIndex: 1000, // Alto z-index para el presentador
-                    isOriginalAspectRatio: true,
-                    hasMask: false
-                },
-                img: null, // No enviamos imagen para el presentador central
-            };
-        } else {
-            // Para los participantes del borde, mantenemos el comportamiento original
-            drawRect(ctx, finalX, finalY, w, h, ctx.fillStyle);
-            
-            ctx.save();
-            ctx.globalCompositeOperation = 'destination-out';
-            ctx.fillStyle = '#FFF';
-            ctx.fillRect(videoX, videoY, videoW, videoH);
-            ctx.restore();
-            
-            const imageData = ctx.getImageData(finalX, finalY, w, h);
-            
-            return {
-                participant: {
-                    participantId: participantId,
-                    x: `${Math.floor(videoX / devicePixelRatio)}px`,
-                    y: `${Math.floor(videoY / devicePixelRatio)}px`,
-                    width: videoW,
-                    height: videoH,
-                    zIndex: idx + 100,
-                    isOriginalAspectRatio: true,
-                    hasMask: false
-                },
-                img: {
-                    imageData,
-                    x: `${Math.floor(finalX / devicePixelRatio)}px`,
-                    y: `${Math.floor(finalY / devicePixelRatio)}px`,
-                    zIndex: idx + 1,
-                },
-            };
-        }
+        drawRect(ctx, finalX, finalY, w, h, ctx.fillStyle);
+        
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.fillStyle = '#FFF';
+        ctx.fillRect(videoX, videoY, videoW, videoH);
+        ctx.restore();
+
+        const imageData = ctx.getImageData(finalX, finalY, w, h);
+
+        return {
+            participant: {
+                participantId: participantId,
+                x: `${Math.floor(videoX / devicePixelRatio)}px`,
+                y: `${Math.floor(videoY / devicePixelRatio)}px`,
+                width: videoW,
+                height: videoH,
+                zIndex: idx,
+                // Le decimos al presentador que se recorte (cover) y a los demás que se ajusten (fit)
+                isOriginalAspectRatio: (idx !== 0), 
+                hasMask: false
+            },
+            img: {
+                imageData,
+                x: `${Math.floor(finalX / devicePixelRatio)}px`,
+                y: `${Math.floor(finalY / devicePixelRatio)}px`,
+                zIndex: idx + 1,
+            },
+        };
     } catch (error) {
         console.error(`Error dibujando el cuadrante ${idx}:`, error);
         return null;
@@ -211,19 +188,7 @@ export async function draw({ ctx, participants, safeArea }) {
             participantId,
             safeArea
         });
-        
-        // Solo agregamos los datos si existen y si hay imagen (no para el presentador central)
-        if (d) {
-            if (d.img !== null) {
-                data.push(d);
-            } else if (d.participant && idx === 0) {
-                // Para el presentador central, solo agregamos el participante sin imagen
-                data.push({
-                    participant: d.participant,
-                    img: null
-                });
-            }
-        }
+        if (d) data.push(d);
     }
 
     return data;
