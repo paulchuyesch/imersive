@@ -35,3 +35,10 @@ button.button.is-primary:hover {
     background: #0E72Ed;
 }
 
+/* ======== AÑADE ESTAS LÍNEAS AL FINAL ======== */
+#main {
+    color: #000000;             /* Texto negro para que sea legible */
+    padding: 24px;               /* Un poco de espacio interno */
+    border-radius: 10px;         /* Bordes redondeados como los otros elementos */
+}
+/* ======== FIN DE LAS LÍNEAS NUEVAS ======== */
