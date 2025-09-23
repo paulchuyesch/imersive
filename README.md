@@ -17,12 +17,6 @@ Este ejemplo de aplicación de Zoom utiliza Node.js + Express para demostrar có
 Abra su terminal:
 
 ```bash
-# Clone este repositorio
-git clone git@github.com/zoom/zoomapps-customlayout-js
-
-# navegue al directorio del proyecto clonado
-cd zoomapps-customlayout-js
-
 # ejecute NPM para instalar las dependencias de la aplicación
 npm install
 
