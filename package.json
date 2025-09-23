@@ -13,7 +13,7 @@
     "postprepare": "node scripts/gen-secrets.cjs"
   },
   "dependencies": {
-    "@zoom/appssdk": "^0.16.25",
+    "@zoom/appssdk": "^0.16.34",
     "axios": "^0.26.0",
     "compression": "^1.7.4",
     "cookie-parser": "~1.4.6",
@@ -38,7 +38,7 @@
     "@rollup/plugin-node-resolve": "^13.1.3",
     "@rollup/plugin-url": "^6.1.0",
     "concurrently": "^7.1.0",
-    "core-js": "^3.21.1",
+    "core-js": "^3.45.1",
     "dotenv": "^16.0.0",
     "envsub": "^4.0.7",
     "eslint": "^8.9.0",

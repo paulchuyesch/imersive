@@ -70,7 +70,9 @@ async function start() {
     await app.updateContext();
     showElements();
     if (app.isImmersive && app.userIsHost)
-        await app.sdk.sendAppInvitationToAllParticipants();
+        setTimeout(() => {
+            app.sdk.sendAppInvitationToAllParticipants();
+        }, 1000);
 }
 
 async function render() {
@@ -86,40 +88,53 @@ async function render() {
     let safeX = 0;
     let safeY = 0;
     const targetAspectRatio = 16 / 9;
-    if ((totalWidth / totalHeight) > targetAspectRatio) {
+    if (totalWidth / totalHeight > targetAspectRatio) {
         safeWidth = totalHeight * targetAspectRatio;
         safeX = (totalWidth - safeWidth) / 2;
     } else {
         safeHeight = totalWidth / targetAspectRatio;
         safeY = (totalHeight - safeHeight) / 2;
     }
-    
+
     // Limpiamos todo para empezar
     ctx.clearRect(0, 0, totalWidth, totalHeight);
     await app.clearAllParticipants();
     await app.clearAllImages();
 
     const participantsSnapshot = [...settings.cast];
-    
+
     // PASO 1: Obtenemos los datos de posición y dibujamos marcos/videos
     const data = await draw({
         ctx,
         participants: participantsSnapshot,
         allParticipants: app.participants,
-        safeArea: { x: safeX, y: safeY, width: safeWidth, height: safeHeight }
+        safeArea: { x: safeX, y: safeY, width: safeWidth, height: safeHeight },
     });
 
     for (let i = 0; i < data.length; i++) {
-        const { participant, img } = data[i];
+        const { participant } = data[i];
         const id = participant?.participantId;
+
+        // ===============================================
+        // INICIO DE LA MODIFICACIÓN PARA LA PRUEBA
+        // El bloque que dibuja la imagen del marco (img) ha sido desactivado.
+        /*
         if (img) {
             await app.drawImage(img);
         }
+        */
+        // FIN DE LA MODIFICACIÓN PARA LA PRUEBA
+        // ===============================================
+
         if (id) {
             await app.drawParticipant(participant);
         }
     }
 
+    // ===============================================
+    // INICIO DE LA MODIFICACIÓN PARA LA PRUEBA
+    // El bloque que dibuja los nombres ha sido desactivado.
+    /*
     // PASO 2: Dibujamos los nombres ENCIMA de todo lo anterior
     ctx.fillStyle = '#FFFFFF';
     ctx.textAlign = 'center';
@@ -132,6 +147,9 @@ async function render() {
             ctx.fillText(text.name, text.x, text.y);
         }
     }
+    */
+    // FIN DE LA MODIFICACIÓN PARA LA PRUEBA
+    // ===============================================
 }
 
 async function drawCastMember(idx, p) {
@@ -143,19 +161,24 @@ async function drawCastMember(idx, p) {
     let safeHeight = totalHeight;
     let safeX = 0;
     let safeY = 0;
-    if ((totalWidth / totalHeight) > targetAspectRatio) {
+    if (totalWidth / totalHeight > targetAspectRatio) {
         safeWidth = totalHeight * targetAspectRatio;
         safeX = (totalWidth - safeWidth) / 2;
     } else {
         safeHeight = totalWidth / targetAspectRatio;
         safeY = (totalHeight - safeHeight) / 2;
     }
-    const safeArea = { x: safeX, y: safeY, width: safeWidth, height: safeHeight };
+    const safeArea = {
+        x: safeX,
+        y: safeY,
+        width: safeWidth,
+        height: safeHeight,
+    };
     const { img, participant } = await drawQuadrant({
         ctx,
         idx,
         participantId: p,
-        safeArea: safeArea
+        safeArea: safeArea,
     });
     await app.drawImage(img);
     if (participant?.participantId) {
@@ -180,7 +203,10 @@ async function onUpdate({ participants, color }) {
     }
     if (changes.participants) settings.cast = participants;
     if (!app.isImmersive) return;
-    const allChanged = Object.values(changes).reduce((sum, next) => sum && next, true);
+    const allChanged = Object.values(changes).reduce(
+        (sum, next) => sum && next,
+        true
+    );
     const len = app.drawnImages.length;
     const hasImages = len > 0;
     if (allChanged || changes.color || (changes.participants && !hasImages))
@@ -222,7 +248,7 @@ function showElements() {
             helpMsg.innerText = 'This app must be started by the host';
         }
     }
-    
+
     if (app.userIsHost) {
         showEl(hostControls);
         setCastSelect(app.participants);
@@ -251,9 +277,8 @@ setCastBtn.onclick = async () => {
         // SOLUCIÓN FINAL: Forzamos un redibujado para eliminar los artefactos
         // que aparecen un instante después de la carga inicial.
         // =================================================================
-        setTimeout(() => render(), 750); 
-    }
-    else if (app.isImmersive && !hasUI) await render();
+        setTimeout(() => render(), 750);
+    } else if (app.isImmersive && !hasUI) await render();
     else if (app.isInClient) await app.sdk.postMessage({ updateCast });
 
     socket.emit('sendUpdate', {
@@ -300,21 +325,16 @@ window.onresize = debounce(render, 1000);
                     const idx = settings.cast.indexOf(p.participantId);
                     if (idx === -1) return;
                     settings.cast.splice(idx, 1);
-                    if (app.isImmersive) await app.clearParticipant(p.participantId);
+                    if (app.isImmersive)
+                        await app.clearParticipant(p.participantId);
                 } else app.participants.push(p);
             }
             await app.sdk.postMessage({ participants: app.participants });
             setCastSelect(app.participants);
         });
         app.sdk.onMessage(async ({ payload }) => {
-            const {
-                color,
-                updateCast,
-                ended,
-                isHost,
-                participants,
-                uuid,
-            } = payload;
+            const { color, updateCast, ended, isHost, participants, uuid } =
+                payload;
             if (uuid) {
                 showEl(controls);
                 settings.uuid = uuid;
