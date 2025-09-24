@@ -49,10 +49,6 @@ function hideEl(el) {
     el.classList.add(classes.hidden);
 }
 
-function clearCanvas() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-}
-
 function debounce(fn, ms = 250) {
     let timer;
     return (...args) => {
@@ -105,52 +101,27 @@ async function render() {
 
     // PASO 1: Obtenemos los datos de posición y dibujamos marcos/videos
     const data = await draw({
-        ctx,
         participants: participantsSnapshot,
         allParticipants: app.participants,
         safeArea: { x: safeX, y: safeY, width: safeWidth, height: safeHeight },
     });
 
     for (let i = 0; i < data.length; i++) {
-        const { participant } = data[i];
+        const { participant, img } = data[i]; // Extraemos la imagen aquí
         const id = participant?.participantId;
 
-        // ===============================================
-        // INICIO DE LA MODIFICACIÓN PARA LA PRUEBA
-        // El bloque que dibuja la imagen del marco (img) ha sido desactivado.
-        /*
+        // ✅ ESTE BLOQUE AHORA ESTÁ ACTIVO Y ES FUNDAMENTAL
         if (img) {
             await app.drawImage(img);
         }
-        */
-        // FIN DE LA MODIFICACIÓN PARA LA PRUEBA
-        // ===============================================
 
         if (id) {
             await app.drawParticipant(participant);
         }
     }
-
-    // ===============================================
-    // INICIO DE LA MODIFICACIÓN PARA LA PRUEBA
-    // El bloque que dibuja los nombres ha sido desactivado.
-    /*
-    // PASO 2: Dibujamos los nombres ENCIMA de todo lo anterior
-    ctx.fillStyle = '#FFFFFF';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-
-    for (let i = 0; i < data.length; i++) {
-        const { text } = data[i];
-        if (text && text.name) {
-            ctx.font = text.font;
-            ctx.fillText(text.name, text.x, text.y);
-        }
-    }
-    */
-    // FIN DE LA MODIFICACIÓN PARA LA PRUEBA
-    // ===============================================
 }
+
+// El resto del archivo (a partir de drawCastMember) permanece sin cambios...
 
 async function drawCastMember(idx, p) {
     if (!app.isImmersive || idx >= 25) return;
@@ -175,7 +146,6 @@ async function drawCastMember(idx, p) {
         height: safeHeight,
     };
     const { img, participant } = await drawQuadrant({
-        ctx,
         idx,
         participantId: p,
         safeArea: safeArea,
@@ -189,7 +159,7 @@ async function drawCastMember(idx, p) {
             await app.drawParticipant(participant);
         }
     }
-    clearCanvas();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
 async function onUpdate({ participants, color }) {
@@ -273,10 +243,6 @@ setCastBtn.onclick = async () => {
 
     if (app.isInMeeting) {
         await start();
-        // =================================================================
-        // SOLUCIÓN FINAL: Forzamos un redibujado para eliminar los artefactos
-        // que aparecen un instante después de la carga inicial.
-        // =================================================================
         setTimeout(() => render(), 750);
     } else if (app.isImmersive && !hasUI) await render();
     else if (app.isInClient) await app.sdk.postMessage({ updateCast });

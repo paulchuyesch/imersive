@@ -1,85 +1,41 @@
+// public/js/lib/canvas.js (VERSIÓN CORREGIDA Y ALINEADA)
+
 /**
- * Draw a rectangle on a given HTMLCanvas context
- * @param {CanvasRenderingContext2D} ctx - canvas 2d context
- * @param {Number} x - x coordinate
- * @param {Number} y - y coordinate
- * @param {Number} width - width of the rectangle
- * @param {Number} height - height of the rectangle
- * @param {string | CanvasGradient | CanvasPattern} fill - fillStyle for the rectangle
+ * Función auxiliar para cargar una imagen de forma asíncrona.
  */
-export function drawRect(ctx, x, y, width, height, fill) {
-    ctx.save();
-    ctx.fillStyle = fill;
-    ctx.fillRect(x, y, width, height);
-    ctx.restore();
+async function loadImage(src) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => {
+            console.error(`Error al cargar la imagen: ${src}`);
+            resolve(null);
+        };
+        img.src = src;
+    });
 }
 
 /**
- * Get the path for a rounded rectangle
- * @param {Number} x - x coordinate
- * @param {Number} y - y coordinate
- * @param {Number} width - width of the rounded rectangle
- * @param {Number} height - height of the rounded rectangle
- * @param {Number} radius - radius of the rounded corners
- * @return {Path2D}
+ * Dibuja un cuadrante individual, ya sea para un participante o como un placeholder.
  */
-export function getRoundRectPath(x, y, width, height, radius) {
-    const region = new Path2D();
-    if (width < 2 * radius) radius = width / 2;
-    if (height < 2 * radius) radius = height / 2;
-    region.moveTo(x + radius, y);
-    region.arcTo(x + width, y, x + width, y + height, radius);
-    region.arcTo(x + width, y + height, x, y + height, radius);
-    region.arcTo(x, y + height, x, y, radius);
-    region.arcTo(x, y, x + width, y, radius);
-    region.closePath();
-    return region;
-}
-
-/**
- * Clip a transparent rounded rectangle from a context
- * @param {CanvasRenderingContext2D} ctx
- * @param {Number} x - x coordinate
- * @param {Number} y - y coordinate
- * @param {Number} width - width of the rounded rectangle
- * @param {Number} height - height of the rounded rectangle
- * @param {Number} radius - radius of the rounded corners
- */
-export function clipRoundRect(ctx, x, y, width, height, radius) {
-    ctx.save();
-    ctx.globalCompositeOperation = 'destination-out';
-    ctx.fillStyle = '#FFF';
-    const region = getRoundRectPath(x, y, width, height, radius);
-    ctx.fill(region);
-    ctx.clip(region);
-    ctx.restore();
-}
-
 export async function drawQuadrant({
     idx,
+    safeArea,
     participantId,
     screenName,
-    safeArea,
+    placeholderImage,
 }) {
-    if (participantId && typeof participantId !== 'string') {
-        console.warn(
-            `ID de participante inválido en el índice ${idx}:`,
-            participantId
-        );
-        return null;
-    }
-
     try {
         const borderWidth = 5 * devicePixelRatio;
-        const textHeight = idx === 0 ? 35 : 25; // Espacio extra para el texto
+        const textHeight = 35; // Espacio reservado para el nombre
 
+        // 1. Calcular dimensiones del slot
         const canvasWidth = safeArea.width;
         const canvasHeight = safeArea.height;
         const slotWidth = canvasWidth / 7;
         const slotHeight = canvasHeight / 7;
 
         let x, y, w, h;
-
         if (idx === 0) {
             x = slotWidth;
             y = slotHeight;
@@ -112,32 +68,38 @@ export async function drawQuadrant({
         const finalW = Math.round(w);
         const finalH = Math.round(h);
 
-        // --- NUEVA LÓGICA CON CANVAS TEMPORAL ---
+        // 2. Crear un canvas temporal para la imagen
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = finalW;
-        tempCanvas.height = finalH + textHeight; // Hacemos el canvas más alto para el texto
+        tempCanvas.height = finalH + (screenName ? textHeight : 0); // Solo añade altura si hay nombre
         const tempCtx = tempCanvas.getContext('2d');
 
-        // 1. Dibujamos el borde negro en el canvas temporal
+        // 3. Dibujar el fondo negro SÓLO para el área del marco, no para el texto
         tempCtx.fillStyle = '#000000';
-        tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+        tempCtx.fillRect(0, 0, finalW, finalH); // Usamos finalH, no la altura total del canvas
 
-        // 2. Dibujamos el nombre en la parte inferior
+        const innerX = borderWidth;
+        const innerY = borderWidth;
+        const innerW = finalW - borderWidth * 2;
+        const innerH = finalH - borderWidth * 2;
+
+        // 4. Dibujar contenido (placeholder o transparente)
+        if (participantId) {
+            tempCtx.clearRect(innerX, innerY, innerW, innerH);
+        } else if (placeholderImage) {
+            tempCtx.drawImage(placeholderImage, innerX, innerY, innerW, innerH);
+        }
+
+        // 5. Dibujar el nombre si existe
         if (screenName) {
             tempCtx.fillStyle = '#FFFFFF';
             tempCtx.textAlign = 'center';
             tempCtx.textBaseline = 'middle';
             const fontSize = idx === 0 ? 18 : 14;
             tempCtx.font = `bold ${fontSize}px Arial`;
+            // Dibuja el nombre en el espacio extra debajo del marco
             tempCtx.fillText(screenName, finalW / 2, finalH + textHeight / 2);
         }
-
-        // 3. "Perforamos" el área para el video
-        const videoX_temp = borderWidth;
-        const videoY_temp = borderWidth;
-        const videoW_temp = finalW - borderWidth * 2;
-        const videoH_temp = finalH - borderWidth * 2;
-        tempCtx.clearRect(videoX_temp, videoY_temp, videoW_temp, videoH_temp);
 
         const imageData = tempCtx.getImageData(
             0,
@@ -146,18 +108,20 @@ export async function drawQuadrant({
             tempCanvas.height
         );
 
+        const participant = participantId
+            ? {
+                  participantId,
+                  x: `${Math.floor((finalX + innerX) / devicePixelRatio)}px`,
+                  y: `${Math.floor((finalY + innerY) / devicePixelRatio)}px`,
+                  width: Math.round(innerW),
+                  height: Math.round(innerH),
+                  zIndex: idx,
+                  isOriginalAspectRatio: true,
+              }
+            : null;
+
         return {
-            participant: {
-                participantId,
-                x: `${Math.floor(finalX / devicePixelRatio)}px`,
-                y: `${Math.floor(finalY / devicePixelRatio)}px`,
-                width: Math.round(videoW_temp),
-                height: Math.round(videoH_temp),
-                zIndex: idx,
-                isOriginalAspectRatio: true,
-                hasMask: false,
-                cornerRadius: 0, // Asegúrate de que esta línea esté aquí
-            },
+            participant,
             img: {
                 imageData,
                 x: `${Math.floor(finalX / devicePixelRatio)}px`,
@@ -171,11 +135,9 @@ export async function drawQuadrant({
     }
 }
 
-export async function draw({ ctx, participants, allParticipants, safeArea }) {
+export async function draw({ participants, allParticipants, safeArea }) {
     const data = [];
-
-    // El canvas principal ahora solo necesita ser limpiado, no pintado de negro.
-    // La imagen de cada cuadrante ya incluye el borde negro.
+    const placeholderImage = await loadImage('/img/usuario-zoom.png');
 
     for (let idx = 0; idx < 25; idx++) {
         const participantId = participants[idx];
@@ -185,13 +147,42 @@ export async function draw({ ctx, participants, allParticipants, safeArea }) {
         const screenName = participantData ? participantData.screenName : '';
 
         const d = await drawQuadrant({
-            ctx,
             idx,
+            safeArea,
             participantId,
             screenName,
-            safeArea,
+            placeholderImage,
         });
         if (d) data.push(d);
     }
     return data;
+}
+
+// Funciones originales que no se usan en esta lógica pero se mantienen por si acaso
+export function drawRect(ctx, x, y, width, height, fill) {
+    ctx.save();
+    ctx.fillStyle = fill;
+    ctx.fillRect(x, y, width, height);
+    ctx.restore();
+}
+export function getRoundRectPath(x, y, width, height, radius) {
+    const region = new Path2D();
+    if (width < 2 * radius) radius = width / 2;
+    if (height < 2 * radius) radius = height / 2;
+    region.moveTo(x + radius, y);
+    region.arcTo(x + width, y, x + width, y + height, radius);
+    region.arcTo(x + width, y + height, x, y + height, radius);
+    region.arcTo(x, y + height, x, y, radius);
+    region.arcTo(x, y, x + width, y, radius);
+    region.closePath();
+    return region;
+}
+export function clipRoundRect(ctx, x, y, width, height, radius) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = '#FFF';
+    const region = getRoundRectPath(x, y, width, height, radius);
+    ctx.fill(region);
+    ctx.clip(region);
+    ctx.restore();
 }
