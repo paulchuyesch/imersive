@@ -36,6 +36,29 @@ class ImmersiveApp {
             if (!this.sdk)
                 throw new Error('Zoom App JS SDK is not loaded on the page');
 
+            /* INICIO DEL CÓDIGO A AÑADIR */
+            this.sdk.onParticipantChange(async () => {
+                console.log(
+                    'Detectado cambio de participante. Actualizando lista completa...'
+                );
+                const { participants } =
+                    await this.sdk.getMeetingParticipants();
+                const host = this.user;
+
+                // Reconstruimos la lista completa para evitar duplicados o errores
+                this.#participants = [
+                    host,
+                    ...participants.filter(
+                        (p) => p.participantId !== host.participantId
+                    ),
+                ];
+
+                // Esto NO es un error, es necesario llamar a una función del otro archivo (index.js)
+                // eslint-disable-next-line no-undef
+                setCastSelect(this.#participants);
+            });
+            /* FIN DEL CÓDIGO A AÑADIR */
+
             // CÓDIGO PROBLEMÁTICO ELIMINADO DE AQUÍ
 
             ImmersiveApp.#instance = this;
@@ -195,8 +218,6 @@ class ImmersiveApp {
 
         return this.sdk.clearImage({ imageId });
     }
-
-
 
     async clearAllImages() {
         while (this.#drawn.images.length > 0) {

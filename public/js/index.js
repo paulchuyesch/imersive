@@ -230,26 +230,27 @@ function showElements() {
 
 setCastBtn.onclick = async () => {
     const selected = castSel.querySelectorAll('option:checked');
-    const hasUI = app.drawnImages.length > 0;
     const cast = [];
     for (let i = 0; i < 25 && i < selected.length; i++) {
-        const id = selected[i].value;
-        if (!id) continue;
-        cast.push(id);
-        if (hasUI) await drawCastMember(i, id);
+        cast.push(selected[i].value);
     }
     settings.cast = cast;
-    const updateCast = settings.cast;
 
-    if (app.isInMeeting) {
+    // Lógica corregida para no reiniciar si ya está activo
+    if (app.isImmersive) {
+        // Si ya estamos en modo inmersivo, solo redibujamos con la nueva selección.
+        console.log('Actualizando participantes y redibujando...');
+        await render();
+    } else if (app.isInMeeting) {
+        // Si no estamos en modo inmersivo, lo iniciamos por primera vez.
+        console.log('Iniciando sesión inmersiva...');
         await start();
-        setTimeout(() => render(), 750);
-    } else if (app.isImmersive && !hasUI) await render();
-    else if (app.isInClient) await app.sdk.postMessage({ updateCast });
+        setTimeout(() => render(), 750); // Espera para que el contexto se establezca
+    }
 
+    // Notificamos a los demás sobre la actualización
     socket.emit('sendUpdate', {
         participants: settings.cast,
-        color: settings.color,
         meetingUUID: settings.uuid,
     });
 };
@@ -355,6 +356,35 @@ window.onresize = debounce(render, 1000);
                 socket.emit('join', { meetingUUID: settings.uuid });
             }
         }
+
+        const updateBtn = document.getElementById('update-btn');
+        if (updateBtn) {
+            updateBtn.addEventListener('click', async () => {
+                // Se convierte a async
+                console.log(
+                    'Botón de actualizar presionado. Sincronizando lista y redibujando...'
+                );
+
+                // 1. Actualiza la lista 'cast' con TODOS los participantes actuales en la reunión
+                settings.cast = app.participants.map((p) => p.participantId);
+
+                // 2. Sincroniza la lista visual para que todos aparezcan seleccionados
+                const options = castSel.options;
+                for (let i = 0; i < options.length; i++) {
+                    options[i].selected = true;
+                }
+
+                // 3. Llama a render para redibujar la escena con todos
+                await render();
+
+                // 4. Notifica a los demás del cambio
+                socket.emit('sendUpdate', {
+                    participants: settings.cast,
+                    meetingUUID: settings.uuid,
+                });
+            });
+        }
+
         showElements();
     } catch (e) {
         console.error(e);
