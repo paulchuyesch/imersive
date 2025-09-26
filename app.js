@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'path';
 import axios from 'axios';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
@@ -23,7 +24,7 @@ const dbg = debug(`${appName}:app`);
 const redirectHost = new URL(redirectUri).host;
 
 // views and assets
-const staticDir = `${__dirname}/dist`;
+const staticDir = path.join(__dirname, 'dist');
 const viewDir = `${__dirname}/server/views`;
 
 app.set('view engine', 'pug');

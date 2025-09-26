@@ -63,6 +63,7 @@ function debounce(fn, ms = 250) {
 async function start() {
     hideEl(content);
     await app.start();
+    await app.reconfigForImmersive();
     await app.updateContext();
     showElements();
     if (app.isImmersive && app.userIsHost)
@@ -72,7 +73,8 @@ async function start() {
 }
 
 async function render() {
-    if (!app.isImmersive) return;
+    if (!app.isImmersive || !Array.isArray(settings.cast)) return;
+
     const totalWidth = innerWidth * devicePixelRatio;
     const totalHeight = innerHeight * devicePixelRatio;
     canvas.style.width = '100%';
@@ -92,14 +94,12 @@ async function render() {
         safeY = (totalHeight - safeHeight) / 2;
     }
 
-    // Limpiamos todo para empezar
     ctx.clearRect(0, 0, totalWidth, totalHeight);
     await app.clearAllParticipants();
     await app.clearAllImages();
 
     const participantsSnapshot = [...settings.cast];
 
-    // PASO 1: Obtenemos los datos de posición y dibujamos marcos/videos
     const data = await draw({
         participants: participantsSnapshot,
         allParticipants: app.participants,
@@ -107,10 +107,9 @@ async function render() {
     });
 
     for (let i = 0; i < data.length; i++) {
-        const { participant, img } = data[i]; // Extraemos la imagen aquí
+        const { participant, img } = data[i];
         const id = participant?.participantId;
 
-        // ✅ ESTE BLOQUE AHORA ESTÁ ACTIVO Y ES FUNDAMENTAL
         if (img) {
             await app.drawImage(img);
         }
@@ -120,8 +119,6 @@ async function render() {
         }
     }
 }
-
-// El resto del archivo (a partir de drawCastMember) permanece sin cambios...
 
 async function drawCastMember(idx, p) {
     if (!app.isImmersive || idx >= 25) return;
@@ -202,11 +199,11 @@ function showElements() {
     const bodyStyle = document.body.style;
 
     if (app.isImmersive) {
-        bodyStyle.backgroundColor = '#000000'; // Fondo negro para modo inmersivo
+        bodyStyle.backgroundColor = '#000000';
         bodyStyle.overflow = 'hidden';
         hideEl(content);
     } else {
-        bodyStyle.backgroundColor = '#FFFFFF'; // Fondo blanco para la barra lateral
+        bodyStyle.backgroundColor = '#FFFFFF';
         showEl(content);
     }
 
@@ -225,9 +222,6 @@ function showElements() {
     }
 }
 
-/* DOM Event Handlers */
-/* Controles de color eliminados */
-
 setCastBtn.onclick = async () => {
     const selected = castSel.querySelectorAll('option:checked');
     const cast = [];
@@ -236,19 +230,12 @@ setCastBtn.onclick = async () => {
     }
     settings.cast = cast;
 
-    // Lógica corregida para no reiniciar si ya está activo
     if (app.isImmersive) {
-        // Si ya estamos en modo inmersivo, solo redibujamos con la nueva selección.
-        console.log('Actualizando participantes y redibujando...');
         await render();
     } else if (app.isInMeeting) {
-        // Si no estamos en modo inmersivo, lo iniciamos por primera vez.
-        console.log('Iniciando sesión inmersiva...');
         await start();
-        setTimeout(() => render(), 750); // Espera para que el contexto se establezca
     }
 
-    // Notificamos a los demás sobre la actualización
     socket.emit('sendUpdate', {
         participants: settings.cast,
         meetingUUID: settings.uuid,
@@ -260,7 +247,6 @@ window.onresize = debounce(render, 1000);
 (async () => {
     try {
         await app.init();
-        /* Zoom Event Handlers */
         app.sdk.onConnect(async () => {
             if (app.isInClient) return;
             await app.sdk.takeParticipantPhoto();
@@ -300,6 +286,9 @@ window.onresize = debounce(render, 1000);
             setCastSelect(app.participants);
         });
         app.sdk.onMessage(async ({ payload }) => {
+            // AÑADIMOS UN FILTRO PARA IGNORAR MENSAJES EN EL CONTEXTO INCORRECTO
+            if (!app.isImmersive) return;
+            
             const { color, updateCast, ended, isHost, participants, uuid } =
                 payload;
             if (uuid) {
@@ -323,7 +312,7 @@ window.onresize = debounce(render, 1000);
                 settings.cast = updateCast.slice(0, 25);
                 if (app.isInMeeting) await start();
                 else if (app.isImmersive) {
-                    const len = app.drawnImages.length;
+                    const len = app.drawnImages?.length ?? 0;
                     if (len <= 0) await render();
                     else
                         for (let i = 0; i < len; i++) {
@@ -360,24 +349,15 @@ window.onresize = debounce(render, 1000);
         const updateBtn = document.getElementById('update-btn');
         if (updateBtn) {
             updateBtn.addEventListener('click', async () => {
-                // Se convierte a async
                 console.log(
                     'Botón de actualizar presionado. Sincronizando lista y redibujando...'
                 );
-
-                // 1. Actualiza la lista 'cast' con TODOS los participantes actuales en la reunión
                 settings.cast = app.participants.map((p) => p.participantId);
-
-                // 2. Sincroniza la lista visual para que todos aparezcan seleccionados
                 const options = castSel.options;
                 for (let i = 0; i < options.length; i++) {
                     options[i].selected = true;
                 }
-
-                // 3. Llama a render para redibujar la escena con todos
                 await render();
-
-                // 4. Notifica a los demás del cambio
                 socket.emit('sendUpdate', {
                     participants: settings.cast,
                     meetingUUID: settings.uuid,
